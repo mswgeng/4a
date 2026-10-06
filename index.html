@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spot the Mistake - Adaptive Grammar Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap');
+
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background: linear-gradient(135deg, #a8edd8 0%, #fed6e3 100%);
+      min-height: 100vh;
+    }
+
+    .font-heading {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+
+    /* Standardized red highlight underline matching classroom worksheets */
+    .error-highlight {
+      background-color: #fde8e8;
+      border-bottom: 3.5px solid #ef4444;
+      padding: 2px 10px;
+      border-radius: 6px;
+      color: #c0392b;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    @keyframes bounceAnim {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .bounce-icon {
+      animation: bounceAnim 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4 min-h-screen">
+
+  <div id="game-card" class="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border-4 border-white max-w-xl w-full p-6 sm:p-8 relative overflow-hidden transition-all duration-300">
+    
+    <!-- Top Header: Stage Indicator & Level Badge -->
+    <div id="game-header" class="flex justify-between items-center mb-5">
+      <div id="level-badge" class="px-4 py-1.5 rounded-full font-heading font-bold text-sm tracking-wide shadow-sm bg-emerald-100 text-emerald-800 border border-emerald-300">
+        Level 1: Easy 🟢
+      </div>
+      <div class="text-right">
+        <span id="stage-indicator" class="font-heading font-bold text-gray-500 text-xs sm:text-sm block">Stage 1 of 3</span>
+        <span id="question-indicator" class="font-heading font-bold text-indigo-600 text-sm sm:text-base">Question 1/3</span>
+      </div>
+    </div>
+
+    <!-- Instructions Banner -->
+    <div id="instruction-box" class="bg-sky-50 rounded-2xl p-3 sm:p-4 mb-4 border border-sky-100 text-center shadow-sm">
+      <p class="font-heading font-bold text-sky-800 text-sm sm:text-base">
+        🔍 Spot the mistake! Choose the correct word to replace the underlined word.
+      </p>
+    </div>
+
+    <!-- Illustration Display -->
+    <div id="illustration-container" class="w-full h-32 sm:h-36 bg-gradient-to-br from-indigo-50 via-sky-50 to-pink-50 rounded-2xl border-2 border-indigo-100 flex items-center justify-center mb-5 shadow-inner text-6xl sm:text-7xl bounce-icon select-none">
+      👀
+    </div>
+
+    <!-- Sentence Display Area -->
+    <div id="sentence-container" class="bg-gray-50 rounded-2xl p-5 mb-5 text-center text-xl sm:text-2xl text-gray-800 font-semibold leading-relaxed border border-gray-200 shadow-sm">
+      <!-- Sentence loaded dynamically -->
+    </div>
+
+    <!-- Multiple Choice Options (3 Options Grid) -->
+    <div id="options-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      <!-- Options buttons populated dynamically -->
+    </div>
+
+    <!-- Interactive Feedback Banner -->
+    <div id="feedback-banner" class="hidden rounded-2xl p-3.5 mb-5 text-center font-heading font-bold text-base sm:text-lg">
+      <!-- Dynamic feedback message -->
+    </div>
+
+    <!-- Next Question Button -->
+    <button id="next-btn" onclick="nextQuestion()" class="hidden w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-heading font-bold text-lg rounded-2xl shadow-md transition-all transform active:scale-95">
+      Next Question ➔
+    </button>
+
+    <!-- Final Game Summary Screen -->
+    <div id="summary-screen" class="hidden text-center py-4">
+      <div class="text-6xl mb-3">🏆</div>
+      <h2 class="font-heading text-3xl font-bold text-indigo-950 mb-2">Game Complete!</h2>
+      <p class="text-gray-600 mb-6 font-medium text-sm sm:text-base">You completed all 3 stages!</p>
+      
+      <div class="bg-indigo-50/80 rounded-2xl p-5 mb-6 border border-indigo-100 text-left space-y-3">
+        <div class="flex justify-between items-center text-gray-700 font-bold">
+          <span>Total Score:</span>
+          <span id="final-score" class="text-indigo-600 text-2xl font-heading">0 / 9</span>
+        </div>
+        <div class="flex justify-between items-center text-gray-700 font-bold">
+          <span>Stages Cleared:</span>
+          <span class="text-emerald-600 text-lg font-heading">3 / 3 Stages</span>
+        </div>
+        <div class="flex justify-between items-center text-gray-700 font-bold">
+          <span>Highest Level Reached:</span>
+          <span id="highest-level" class="text-amber-600 text-lg font-heading">Level 1</span>
+        </div>
+      </div>
+
+      <p id="eval-message" class="text-gray-700 font-medium italic mb-6 text-sm sm:text-base">
+        Great effort! Keep practicing your comparative and superlative spelling rules!
+      </p>
+
+      <button onclick="restartGame()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-heading font-bold text-lg rounded-2xl shadow-lg transition-all transform active:scale-95">
+        Play Again 🔄
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    // Complete P4 Level-based Question Bank (Strictly avoiding "more ... than" & "the most ...")
+    const questionBank = {
+      1: [ // Level 1 (Easy): Basic -er / -est & simple spelling
+        { id: "L1_1", before: "My eyes are the ", error: "bigest", after: ".", emoji: "👀", options: ["biggest", "biger", "big"], correct: 0 },
+        { id: "L1_2", before: "Theo's hair is ", error: "short", after: " than Daisy's hair.", emoji: "💇‍♂️", options: ["shorter", "shortest", "shorting"], correct: 0 },
+        { id: "L1_3", before: "An elephant is ", error: "large", after: " than a dog.", emoji: "🐘", options: ["larger", "largest", "larges"], correct: 0 },
+        { id: "L1_4", before: "Ice cream is ", error: "sweet", after: " than bread.", emoji: "🍧", options: ["sweeter", "sweetest", "sweeting"], correct: 0 },
+        { id: "L1_5", before: "My dog is ", error: "small", after: " than your cat.", emoji: "🐶", options: ["smaller", "smallest", "smalling"], correct: 0 }
+      ],
+      2: [ // Level 2 (Medium): Spelling Rules (-y -> -ier / -iest & double consonant context)
+        { id: "L2_1", before: "Mr Tam is the ", error: "taller", after: " teacher in school.", emoji: "👨‍🏫", options: ["tallest", "tall", "tallerest"], correct: 0 },
+        { id: "L2_2", before: "Miss Wong is ", error: "heavyier", after: " than you.", emoji: "⚖️", options: ["heavier", "heavyst", "heavyer"], correct: 0 },
+        { id: "L2_3", before: "Today is the ", error: "sunyest", after: " day of the week.", emoji: "☀️", options: ["sunniest", "sunnier", "sunnyest"], correct: 0 },
+        { id: "L2_4", before: "Timmy is ", error: "happyer", after: " than yesterday.", emoji: "😊", options: ["happier", "happiest", "happy"], correct: 0 },
+        { id: "L2_5", before: "This bag is ", error: "heavyer", after: " than that box.", emoji: "🎒", options: ["heavier", "heaviest", "heavying"], correct: 0 }
+      ],
+      3: [ // Level 3 (Hard): Irregular Forms (good/best) & Advanced Comparative Sentence Context
+        { id: "L3_1", before: "This puzzle is ", error: "easiest", after: " than that one.", emoji: "🧩", options: ["easier", "easyer", "easiest"], correct: 0 },
+        { id: "L3_2", before: "Leo is the ", error: "goodest", after: " runner in our class.", emoji: "🏃‍♂️", options: ["best", "better", "gooder"], correct: 0 },
+        { id: "L3_3", before: "A cheetah is ", error: "fastest", after: " than a rabbit.", emoji: "🐆", options: ["faster", "fast", "more fast"], correct: 0 },
+        { id: "L3_4", before: "My test results are ", error: "betterest", after: " than before.", emoji: "💯", options: ["better", "best", "gooder"], correct: 0 },
+        { id: "L3_5", before: "Who is the ", error: "faster", after: " swimmer in the team?", emoji: "🏊‍♂️", options: ["fastest", "fast", "fasterer"], correct: 0 }
+      ]
+    };
+
+    // Game Engine State
+    let currentStage = 1;               // Always 1 -> 2 -> 3
+    let currentQuestionInStage = 0;     // 0, 1, 2 (3 questions per stage)
+    let currentLevel = 1;               // Level 1, 2, or 3
+    let stageScore = 0;                 // Correct count in current stage
+    let totalScore = 0;                 // Total correct out of 9
+    let highestLevelReached = 1;
+    let usedQuestionIds = new Set();    // Guarantees zero question repetition
+    let isAnswered = false;
+    let activeQuestion = null;
+
+    // Retrieve a non-repeating question for the current level
+    function fetchQuestionForLevel(level) {
+      const candidates = questionBank[level].filter(q => !usedQuestionIds.has(q.id));
+      if (candidates.length > 0) {
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        usedQuestionIds.add(picked.id);
+        return picked;
+      }
+      // Fallback if level pool runs low
+      for (let l of [1, 2, 3]) {
+        const fallbackList = questionBank[l].filter(q => !usedQuestionIds.has(q.id));
+        if (fallbackList.length > 0) {
+          const picked = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+          usedQuestionIds.add(picked.id);
+          return picked;
+        }
+      }
+      return null;
+    }
+
+    function updateBadgeUI() {
+      const badge = document.getElementById('level-badge');
+      if (currentLevel === 1) {
+        badge.innerText = "Level 1: Easy 🟢";
+        badge.className = "px-4 py-1.5 rounded-full font-heading font-bold text-sm tracking-wide shadow-sm bg-emerald-100 text-emerald-800 border border-emerald-300";
+      } else if (currentLevel === 2) {
+        badge.innerText = "Level 2: Medium 🟡";
+        badge.className = "px-4 py-1.5 rounded-full font-heading font-bold text-sm tracking-wide shadow-sm bg-amber-100 text-amber-800 border border-amber-300";
+      } else {
+        badge.innerText = "Level 3: Hard 🔴";
+        badge.className = "px-4 py-1.5 rounded-full font-heading font-bold text-sm tracking-wide shadow-sm bg-rose-100 text-rose-800 border border-rose-300";
+      }
+    }
+
+    // Load and render active question
+    function loadCurrentQuestion() {
+      isAnswered = false;
+      activeQuestion = fetchQuestionForLevel(currentLevel);
+
+      if (currentLevel > highestLevelReached) {
+        highestLevelReached = currentLevel;
+      }
+
+      updateBadgeUI();
+
+      // Stage & Question indicators
+      document.getElementById('stage-indicator').innerText = `Stage ${currentStage} of 3`;
+      document.getElementById('question-indicator').innerText = `Question ${currentQuestionInStage + 1}/3`;
+
+      // Render illustration emoji
+      document.getElementById('illustration-container').innerText = activeQuestion.emoji;
+
+      // Render sentence with error highlighted
+      document.getElementById('sentence-container').innerHTML = `${activeQuestion.before}<span class="error-highlight">${activeQuestion.error}</span>${activeQuestion.after}`;
+
+      // Reset feedback and action buttons
+      document.getElementById('feedback-banner').className = 'hidden';
+      document.getElementById('next-btn').style.display = 'none';
+
+      // Render 3 option buttons
+      const optionsBox = document.getElementById('options-container');
+      optionsBox.innerHTML = '';
+
+      activeQuestion.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'py-3.5 px-3 bg-white border-2 border-indigo-200 rounded-2xl font-heading font-bold text-lg text-gray-800 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all shadow-sm active:scale-95 outline-none';
+        btn.innerText = opt;
+        btn.onclick = () => handleAnswer(idx, btn);
+        optionsBox.appendChild(btn);
+      });
+    }
+
+    function handleAnswer(selectedIndex, buttonElem) {
+      if (isAnswered) return;
+      isAnswered = true;
+
+      const allButtons = document.querySelectorAll('#options-container button');
+      const feedbackBanner = document.getElementById('feedback-banner');
+
+      if (selectedIndex === activeQuestion.correct) {
+        buttonElem.className = 'py-3.5 px-3 bg-emerald-500 border-2 border-emerald-600 text-white rounded-2xl font-heading font-bold text-lg shadow-md transform scale-102 transition-all';
+        feedbackBanner.innerText = '🌟 Well done! That is correct!';
+        feedbackBanner.className = 'block rounded-2xl p-3.5 mb-5 text-center font-heading font-bold text-base sm:text-lg bg-emerald-100 text-emerald-800 border border-emerald-300';
+        stageScore++;
+        totalScore++;
+      } else {
+        buttonElem.className = 'py-3.5 px-3 bg-rose-500 border-2 border-rose-600 text-white rounded-2xl font-heading font-bold text-lg shadow-md transition-all';
+        allButtons[activeQuestion.correct].className = 'py-3.5 px-3 bg-emerald-500 border-2 border-emerald-600 text-white rounded-2xl font-heading font-bold text-lg shadow-md';
+        
+        feedbackBanner.innerText = '❌ Good try! Check the correct answer above.';
+        feedbackBanner.className = 'block rounded-2xl p-3.5 mb-5 text-center font-heading font-bold text-base sm:text-lg bg-rose-100 text-rose-800 border border-rose-300';
+      }
+
+      allButtons.forEach(b => b.onclick = null);
+      document.getElementById('next-btn').style.display = 'block';
+    }
+
+    function nextQuestion() {
+      currentQuestionInStage++;
+
+      // After 3 questions in a stage, adjust level and move to NEXT stage
+      if (currentQuestionInStage >= 3) {
+        adaptDifficultyForNextStage();
+        currentQuestionInStage = 0;
+        stageScore = 0;
+        currentStage++;
+      }
+
+      // Check if all 3 stages completed
+      if (currentStage > 3) {
+        renderSummaryScreen();
+      } else {
+        loadCurrentQuestion();
+      }
+    }
+
+    // Adaptive difficulty mechanism based on stage score
+    function adaptDifficultyForNextStage() {
+      if (stageScore >= 2) { // High score (2 or 3/3) -> Level up
+        if (currentLevel < 3) currentLevel++;
+      } else {              // Low score (0 or 1/3) -> Ease level
+        if (currentLevel > 1) currentLevel--;
+      }
+    }
+
+    function renderSummaryScreen() {
+      document.getElementById('game-header').style.display = 'none';
+      document.getElementById('instruction-box').style.display = 'none';
+      document.getElementById('illustration-container').style.display = 'none';
+      document.getElementById('sentence-container').style.display = 'none';
+      document.getElementById('options-container').style.display = 'none';
+      document.getElementById('feedback-banner').style.display = 'none';
+      document.getElementById('next-btn').style.display = 'none';
+
+      document.getElementById('summary-screen').classList.remove('hidden');
+      document.getElementById('final-score').innerText = `${totalScore} / 9`;
+
+      const lvlText = highestLevelReached === 1 ? "Level 1: Easy 🟢" : (highestLevelReached === 2 ? "Level 2: Medium 🟡" : "Level 3: Hard 🔴");
+      document.getElementById('highest-level').innerText = lvlText;
+
+      const evalMsg = document.getElementById('eval-message');
+      if (totalScore >= 7) {
+        evalMsg.innerText = "🏆 Outstanding job! You are a grammar superstar!";
+      } else if (totalScore >= 4) {
+        evalMsg.innerText = "👍 Great effort! You are getting really good at comparative adjectives!";
+      } else {
+        evalMsg.innerText = "💪 Keep going! Practice makes perfect!";
+      }
+    }
+
+    function restartGame() {
+      currentStage = 1;
+      currentQuestionInStage = 0;
+      currentLevel = 1;
+      stageScore = 0;
+      totalScore = 0;
+      highestLevelReached = 1;
+      usedQuestionIds.clear();
+
+      document.getElementById('game-header').style.display = 'flex';
+      document.getElementById('instruction-box').style.display = 'block';
+      document.getElementById('illustration-container').style.display = 'flex';
+      document.getElementById('sentence-container').style.display = 'block';
+      document.getElementById('options-container').style.display = 'grid';
+      document.getElementById('summary-screen').classList.add('hidden');
+
+      loadCurrentQuestion();
+    }
+
+    // Initialize game load
+    loadCurrentQuestion();
+  </script>
+</body>
+</html>
